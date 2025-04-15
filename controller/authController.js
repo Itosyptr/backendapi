@@ -1,7 +1,6 @@
 const admin = require('../config/firebase.js');
 require('dotenv').config();
 require('firebase/auth');
-const fetch = require('node-fetch');
 
 // Fungsi untuk registrasi user
 const registerUser = async (req, res) => {
@@ -54,7 +53,7 @@ const loginUser = async (req, res) => {
     }
     
     const firebaseApiKey = process.env.FIREBASE_API_KEY;
-    
+    const fetch = (await import('node-fetch')).default;
     const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseApiKey}`, {
       method: 'POST',
       headers: {
