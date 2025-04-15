@@ -1,4 +1,7 @@
 const admin = require('../config/firebase.js');
+require('dotenv').config();
+require('firebase/auth');
+const fetch = require('node-fetch');
 
 // Fungsi untuk registrasi user
 const registerUser = async (req, res) => {
@@ -16,6 +19,14 @@ const registerUser = async (req, res) => {
       displayName: username,
     });
 
+    // Create user profile in Firestore
+    await admin.firestore().collection('users').doc(userRecord.uid).set({
+      username,
+      email,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
     res.status(201).send({
       message: 'User registered successfully',
       userId: userRecord.uid,
@@ -25,7 +36,7 @@ const registerUser = async (req, res) => {
   }
 };
 
-// Fungsi untuk login user
+// Fungsi untuk login user 
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
@@ -34,15 +45,51 @@ const loginUser = async (req, res) => {
   }
 
   try {
-    // Verifikasi apakah email ada di Firebase Authentication
-    const user = await admin.auth().getUserByEmail(email);
+    try {
+      const userRecord = await admin.auth().getUserByEmail(email);
+    } catch (emailError) {
+      if (emailError.code === 'auth/user-not-found') {
+        return res.status(404).send('User not found');
+      }
+    }
+    
+    const firebaseApiKey = process.env.FIREBASE_API_KEY;
+    
+    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseApiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        returnSecureToken: true
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.error) {
+      if (data.error.message === 'INVALID_PASSWORD' || data.error.message === 'INVALID_LOGIN_CREDENTIALS') {
+        return res.status(401).send('Email atau password salah');
+      } else if (data.error.message === 'EMAIL_NOT_FOUND') {
+        return res.status(404).send('User tidak ditemukan');
+      }
+      return res.status(400).send(data.error.message);
+    }
     res.status(200).send({
       message: 'Login successful',
-      uid: user.uid,
+      uid: data.localId,
+      token: data.idToken
     });
+    
   } catch (error) {
-    res.status(500).send(error.message);
+    console.error('Login error:', error);
+    res.status(500).send('Terjadi kesalahan saat login. Silakan coba lagi.');
   }
 };
 
-module.exports = { registerUser, loginUser };
+module.exports = { 
+  registerUser, 
+  loginUser
+};
