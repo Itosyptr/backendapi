@@ -15,6 +15,7 @@ app.get("/", (req, res) => {
     });
 });
 app.use('/auth', authRoutes);
+
 app.use((req, res, next) => {
     res.status(404).send({
         message: "Kemana man??",
@@ -24,5 +25,5 @@ app.use((req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(`Server running on port http://localhost:${port}`);
+  console.log(`Server running on port http://localhost:${PORT}`);
 });
