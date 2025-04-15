@@ -1,0 +1,11 @@
+{
+    "version": 2,
+    "name": "smartdorr",
+    "builds": [{ "src": "./index.js", "use": "@vercel/node" }],
+    "routes": [
+      {
+        "src": "/(.*)",
+        "dest": "/"
+      }
+    ]
+}
