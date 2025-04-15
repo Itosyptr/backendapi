@@ -36,7 +36,8 @@ const loginUser = async (req, res) => {
   try {
     // Gunakan Firebase REST API untuk sign in dengan email & password
     const response = await axios.post(
-      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`,
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=
+AIzaSyASr6M0nv6qUHz-1MpMvH4Q7yie7iSLLHk`,
       {
         email,
         password,
