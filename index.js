@@ -8,16 +8,13 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
     next();
 });
-app.use('/auth', authRoutes);
-
 app.get("/", (req, res) => {
     res.send({
         message: "Api Smartdorm",
         author: "Smartdorm",
     });
 });
-
-
+app.use('/auth', authRoutes);
 app.use((req, res, next) => {
     res.status(404).send({
         message: "Kemana man??",
@@ -25,7 +22,7 @@ app.use((req, res, next) => {
 });
 
 
-const port = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server running on port http://localhost:${port}`);
 });
