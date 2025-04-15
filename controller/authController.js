@@ -34,42 +34,14 @@ const loginUser = async (req, res) => {
   }
 
   try {
-    // Gunakan Firebase REST API untuk sign in dengan email & password
-    const response = await axios.post(
-      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=
-AIzaSyASr6M0nv6qUHz-1MpMvH4Q7yie7iSLLHk`,
-      {
-        email,
-        password,
-        returnSecureToken: true,
-      }
-    );
-
+    // Verifikasi apakah email ada di Firebase Authentication
+    const user = await admin.auth().getUserByEmail(email);
     res.status(200).send({
-      success: true,
       message: 'Login successful',
-      uid: response.data.localId,
-      token: response.data.idToken,
+      uid: user.uid,
     });
   } catch (error) {
-    // Tangani error dari Firebase
-    let errorMessage = 'Login failed';
-    if (error.response) {
-      switch (error.response.data.error.message) {
-        case 'EMAIL_NOT_FOUND':
-          errorMessage = 'Email tidak terdaftar';
-          break;
-        case 'INVALID_PASSWORD':
-          errorMessage = 'Password salah';
-          break;
-        default:
-          errorMessage = error.response.data.error.message;
-      }
-    }
-    res.status(401).send({
-      success: false,
-      message: errorMessage,
-    });
+    res.status(500).send(error.message);
   }
 };
 
