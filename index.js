@@ -2,6 +2,7 @@ const express = require('express');
 const authRoutes = require('./routes/authRoutes');
 const app = express();
 
+require('dotenv').config(); 
 app.use(express.json());
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
