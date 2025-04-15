@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 const admin = require('firebase-admin');
-=======
-  const admin = require('firebase-admin');
->>>>>>> ef25e0da7559924a229525794f82c0da04b1701f
 require('dotenv').config(); 
 
 const serviceAccount = {
