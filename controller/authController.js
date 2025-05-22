@@ -10,11 +10,9 @@ const { getCurrentTimestamp } = require('../utils/datetimeHelper');
 
 // Fungsi untuk registrasi user
 const registerUser = async (req, res) => {
-  const { username, email, password } = req.body;
-
-  // Input validation
-  if (!email || !password || !username) {
-    return res.status(400).json({ error: 'Username, email, and password are required' });
+  const { username, email, password, nim } = req.body;
+  if (!email || !password || !username || !nim) {
+    return res.status(400).json({ error: 'Username, email, password, and NIM are required' });
   }
 
   if (!validatePasswordStrength(password)) {
@@ -23,6 +21,11 @@ const registerUser = async (req, res) => {
     });
   }
 
+  if (!/^\d+$/.test(nim)) { // Memastikan NIM hanya berisi angka
+    return res.status(400).json({ error: 'NIM harus berupa angka' });
+  }
+
+
   const timestamp = getCurrentTimestamp();
   const usersRef = db.ref('users');
   const profilesRef = db.ref('profiles');
@@ -30,9 +33,17 @@ const registerUser = async (req, res) => {
   // Check if user exists in either collection
   const emailCheck = await usersRef.orderByChild('email').equalTo(email).once('value');
   const usernameCheck = await profilesRef.orderByChild('name').equalTo(username).once('value');
+  // Opsional: Tambahkan pengecekan NIM jika NIM juga harus unik
+  const nimCheck = await profilesRef.orderByChild('nim').equalTo(nim).once('value');
 
-  if (emailCheck.exists() || usernameCheck.exists()) {
-    return res.status(400).json({ error: 'User already exists' });
+
+  if (emailCheck.exists() || usernameCheck.exists() || nimCheck.exists()) { // Tambahkan nimCheck
+    // Sesuaikan pesan error jika NIM juga dicek
+    let errorMessage = 'User already exists';
+    if (emailCheck.exists()) errorMessage = 'Email sudah terdaftar';
+    else if (usernameCheck.exists()) errorMessage = 'Username sudah terdaftar';
+    else if (nimCheck.exists()) errorMessage = 'NIM sudah terdaftar'; // Pesan spesifik untuk NIM
+    return res.status(400).json({ error: errorMessage });
   }
 
   // Create user in both collections
@@ -47,11 +58,13 @@ const registerUser = async (req, res) => {
       password: hashedPassword,
       createdAt: timestamp,
       updatedAt: timestamp,
-      profileId: newProfileRef.key
+      profileId: newProfileRef.key,
+      nim // <-- Tambahkan NIM di sini
     }),
     newProfileRef.set({
-      username,
+      username, // Ini kemungkinan akan menjadi 'name' di sisi Android
       email,
+      nim, // <-- Tambahkan NIM di sini
       createdAt: timestamp,
       updatedAt: timestamp,
       userId: newUserRef.key
@@ -61,7 +74,8 @@ const registerUser = async (req, res) => {
   res.status(201).json({
     message: 'User successfully registered',
     userId: newUserRef.key,
-    profileId: newProfileRef.key
+    profileId: newProfileRef.key,
+    nim // <-- Opsional: Kembalikan NIM di respons
   });
 };
 
