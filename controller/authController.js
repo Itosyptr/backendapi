@@ -7,6 +7,7 @@ const {
   validatePasswordStrength
 } = require('../utils/authHelper');
 const { getCurrentTimestamp } = require('../utils/datetimeHelper');
+const { uploadToCloudinary } = require('../utils/cloudinaryConfig');
 
 // Fungsi untuk registrasi user
 const registerUser = async (req, res) => {
@@ -75,7 +76,7 @@ const registerUser = async (req, res) => {
     message: 'User successfully registered',
     userId: newUserRef.key,
     profileId: newProfileRef.key,
-    nim // <-- Opsional: Kembalikan NIM di respons
+    nim 
   });
 };
 
@@ -85,7 +86,7 @@ const loginUser = async (req, res) => {
     const { username , password } = req.body;
 
     if (!username || !password) {
-      return res.status(400).send('Please provide email and password.');
+      return res.status(400).send('Please provide username and password.');
     }
 
     const profilesRef = db.ref('profiles');
@@ -105,7 +106,7 @@ const loginUser = async (req, res) => {
     const userSnapshot = await usersRef.child(userId).once('value');
     const user = userSnapshot.val();
 
-    if (!user) {
+    if (!user) {  
       return res.status(400).json({ error: 'User account not found' });
     }
 
@@ -149,7 +150,6 @@ const getProfile = async (req, res) => {
       return res.status(404).json({ error: 'Profile not found' });
     }
 
-    // Since we're querying by username, we need to get the first (and should be only) profile
     const profiles = profileSnapshot.val();
     const profileData = Object.values(profiles)[0];
     
@@ -173,25 +173,31 @@ const updateProfile = async (req, res) => {
   try {
     const { username: currentUsername } = req.params;
     const { username: newUsername, nim } = req.body;
-
-    if (!newUsername && !nim) {
-      return res.status(400).json({ error: 'Provide at least username or NIM to update' });
-    }
-
     const timestamp = getCurrentTimestamp();
     const updates = {};
 
-    // Set only allowed fields
-    if (newUsername) updates.username = newUsername;
-    if (nim) {
-      if (!/^\d+$/.test(nim)) {
-        return res.status(400).json({ error: 'NIM harus berupa angka' });
+    // Handle normal profile updates
+    if (newUsername || nim) {
+      if (newUsername) updates.username = newUsername;
+      if (nim) {
+        if (!/^\d+$/.test(nim)) {
+          return res.status(400).json({ error: 'NIM harus berupa angka' });
+        }
+        updates.nim = nim;
       }
-      updates.nim = nim;
     }
-    updates.updatedAt = timestamp;
 
-    // Check if new username already exists (if username is being updated)
+    // Handle avatar upload if file is present
+    if (req.file) {
+      const cloudinaryResponse = await uploadToCloudinary(req.file.buffer);
+      updates.avatarUrl = cloudinaryResponse.secure_url;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'Provide at least username, NIM, or avatar to update' });
+    }
+
+    // Check if new username already exists
     if (newUsername && newUsername !== currentUsername) {
       const usernameCheck = await db.ref('profiles')
         .orderByChild('username')
@@ -203,7 +209,7 @@ const updateProfile = async (req, res) => {
       }
     }
 
-    // Find the profile to update
+    // Find and update profile
     const profilesRef = db.ref('profiles');
     const profileSnapshot = await profilesRef
       .orderByChild('username')
@@ -218,10 +224,13 @@ const updateProfile = async (req, res) => {
     const profileKey = Object.keys(profiles)[0];
     const profile = profiles[profileKey];
 
+    // Add updatedAt timestamp
+    updates.updatedAt = timestamp;
+
     // Update profile
     await profilesRef.child(profileKey).update(updates);
 
-    // If username is updated, also update it in the users collection
+    // If username is updated, also update it in users collection
     if (newUsername) {
       await db.ref('users').child(profile.userId).update({
         username: newUsername,
@@ -238,6 +247,7 @@ const updateProfile = async (req, res) => {
       profile: {
         username: updatedProfile.username,
         nim: updatedProfile.nim,
+        avatarUrl: updatedProfile.avatarUrl,
         updatedAt: updatedProfile.updatedAt
       }
     });
@@ -251,5 +261,5 @@ module.exports = {
   registerUser, 
   loginUser,
   getProfile,
-  updateProfile // Add this to exports
+  updateProfile
 };
