@@ -158,6 +158,7 @@ const getProfile = async (req, res) => {
         username: profileData.username,
         email: profileData.email,
         nim: profileData.nim,
+        avatarUrl: profileData.avatarUrl,
         createdAt: profileData.createdAt,
         updatedAt: profileData.updatedAt
       }
