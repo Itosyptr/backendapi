@@ -131,7 +131,46 @@ const loginUser = async (req, res) => {
   }
 };
 
+// Function to get user profile by username
+const getProfile = async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    if (!username) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+
+    const profilesRef = db.ref('profiles');
+    const profileSnapshot = await profilesRef
+      .orderByChild('username')
+      .equalTo(username)
+      .once('value');
+
+    if (!profileSnapshot.exists()) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    // Since we're querying by username, we need to get the first (and should be only) profile
+    const profiles = profileSnapshot.val();
+    const profileData = Object.values(profiles)[0];
+    
+    res.status(200).json({
+      profile: {
+        username: profileData.username,
+        email: profileData.email,
+        nim: profileData.nim,
+        createdAt: profileData.createdAt,
+        updatedAt: profileData.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    res.status(500).json({ error: 'Failed to fetch profile data' });
+  }
+};
+
 module.exports = { 
   registerUser, 
-  loginUser
+  loginUser,
+  getProfile
 };
