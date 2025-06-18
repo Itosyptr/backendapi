@@ -82,18 +82,17 @@ const registerUser = async (req, res) => {
 // Fungsi untuk login user 
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { username , password } = req.body;
 
-    if (!email || !password) {
+    if (!username || !password) {
       return res.status(400).send('Please provide email and password.');
     }
 
-    // First check in profiles (as that's where emails are indexed)
     const profilesRef = db.ref('profiles');
-    const profileSnapshot = await profilesRef.orderByChild('email').equalTo(email).once('value');
+    const profileSnapshot = await profilesRef.orderByChild('username').equalTo(username).once('value');
 
     if (!profileSnapshot.exists()) {
-      return res.status(400).json({ error: 'Email tidak ditemukan' });
+      return res.status(400).json({ error: 'Username tidak ditemukan' });
     }
 
     // Get the associated user record
