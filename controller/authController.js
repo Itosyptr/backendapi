@@ -169,8 +169,88 @@ const getProfile = async (req, res) => {
   }
 };
 
+// Function to update user profile
+const updateProfile = async (req, res) => {
+  try {
+    const { username: currentUsername } = req.params;
+    const { username: newUsername, nim } = req.body;
+
+    if (!newUsername && !nim) {
+      return res.status(400).json({ error: 'Provide at least username or NIM to update' });
+    }
+
+    const timestamp = getCurrentTimestamp();
+    const updates = {};
+
+    // Set only allowed fields
+    if (newUsername) updates.username = newUsername;
+    if (nim) {
+      if (!/^\d+$/.test(nim)) {
+        return res.status(400).json({ error: 'NIM harus berupa angka' });
+      }
+      updates.nim = nim;
+    }
+    updates.updatedAt = timestamp;
+
+    // Check if new username already exists (if username is being updated)
+    if (newUsername && newUsername !== currentUsername) {
+      const usernameCheck = await db.ref('profiles')
+        .orderByChild('username')
+        .equalTo(newUsername)
+        .once('value');
+
+      if (usernameCheck.exists()) {
+        return res.status(400).json({ error: 'Username baru sudah digunakan' });
+      }
+    }
+
+    // Find the profile to update
+    const profilesRef = db.ref('profiles');
+    const profileSnapshot = await profilesRef
+      .orderByChild('username')
+      .equalTo(currentUsername)
+      .once('value');
+
+    if (!profileSnapshot.exists()) {
+      return res.status(404).json({ error: 'Profile tidak ditemukan' });
+    }
+
+    const profiles = profileSnapshot.val();
+    const profileKey = Object.keys(profiles)[0];
+    const profile = profiles[profileKey];
+
+    // Update profile
+    await profilesRef.child(profileKey).update(updates);
+
+    // If username is updated, also update it in the users collection
+    if (newUsername) {
+      await db.ref('users').child(profile.userId).update({
+        username: newUsername,
+        updatedAt: timestamp
+      });
+    }
+
+    // Get updated profile data
+    const updatedSnapshot = await profilesRef.child(profileKey).once('value');
+    const updatedProfile = updatedSnapshot.val();
+
+    res.status(200).json({
+      message: 'Profile berhasil diperbarui',
+      profile: {
+        username: updatedProfile.username,
+        nim: updatedProfile.nim,
+        updatedAt: updatedProfile.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Gagal memperbarui profile' });
+  }
+};
+
 module.exports = { 
   registerUser, 
   loginUser,
-  getProfile
+  getProfile,
+  updateProfile // Add this to exports
 };
